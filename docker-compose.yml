@@ -1,0 +1,49 @@
+﻿version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: labresults-postgres
+    environment:
+      POSTGRES_USER: walletflow
+      POSTGRES_PASSWORD: walletflow123
+      POSTGRES_DB: labresults
+    ports:
+      - '5433:5432'
+    volumes:
+      - labresults_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U walletflow -d labresults']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: labresults-redis
+    ports:
+      - '6381:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: src/LabResults.API/Dockerfile
+    container_name: labresults-api
+    ports:
+      - '5010:8080'
+    environment:
+      - ConnectionStrings__LabResults=Host=postgres;Port=5432;Database=labresults;Username=walletflow;Password=walletflow123
+      - ConnectionStrings__Redis=redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  labresults_postgres:
