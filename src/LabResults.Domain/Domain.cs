@@ -1,16 +1,16 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-// ── Common
+// â”€â”€ Common
 namespace LabResults.Domain.Common
 {
     public abstract class ValueObject
     {
         protected abstract IEnumerable<object> GetEqualityComponents();
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj is null || obj.GetType() != GetType()) return false;
             return GetEqualityComponents().SequenceEqual(((ValueObject)obj).GetEqualityComponents());
@@ -32,7 +32,7 @@ namespace LabResults.Domain.Common
     }
 }
 
-// ── Exceptions
+// â”€â”€ Exceptions
 namespace LabResults.Domain.Exceptions
 {
     public class DomainException : Exception { public DomainException(string m) : base(m) { } }
@@ -41,7 +41,7 @@ namespace LabResults.Domain.Exceptions
     public class ResultNotReadyException : DomainException { public ResultNotReadyException() : base("Result must be completed before this action.") { } }
 }
 
-// ── Enums
+// â”€â”€ Enums
 namespace LabResults.Domain.Enums
 {
     public enum SampleStatus { Received, Processing, Completed, Validated, Rejected }
@@ -49,7 +49,7 @@ namespace LabResults.Domain.Enums
     public enum ResultStatus { Pending, Completed, Validated, Notified }
 }
 
-// ── Value Objects
+// â”€â”€ Value Objects
 namespace LabResults.Domain.ValueObjects
 {
     using LabResults.Domain.Common;
@@ -106,7 +106,7 @@ namespace LabResults.Domain.ValueObjects
     }
 }
 
-// ── Events
+// â”€â”€ Events
 namespace LabResults.Domain.Events
 {
     using LabResults.Domain.Common;
@@ -118,7 +118,7 @@ namespace LabResults.Domain.Events
     public class PatientNotifiedEvent : DomainEvent { public Guid SampleId { get; init; } public Guid PatientId { get; init; } public string PatientEmail { get; init; } = string.Empty; }
 }
 
-// ── Aggregates
+// â”€â”€ Aggregates
 namespace LabResults.Domain.Aggregates
 {
     using LabResults.Domain.Common;
@@ -200,7 +200,7 @@ namespace LabResults.Domain.Aggregates
     }
 }
 
-// ── Ports (Hexagonal - Output)
+// â”€â”€ Ports (Hexagonal - Output)
 namespace LabResults.Domain.Ports
 {
     using LabResults.Domain.Aggregates;
