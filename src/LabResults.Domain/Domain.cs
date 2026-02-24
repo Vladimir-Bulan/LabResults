@@ -87,6 +87,7 @@ namespace LabResults.Domain.ValueObjects
         public bool IsNormal => Numeric >= ReferenceMin && Numeric <= ReferenceMax;
         public string Status => IsNormal ? "Normal" : Numeric < ReferenceMin ? "Low" : "High";
 
+        private ResultValue() { Numeric = 0; Unit = string.Empty; ReferenceMin = 0; ReferenceMax = 1; }
         public ResultValue(decimal numeric, string unit, decimal refMin, decimal refMax)
         {
             if (refMin >= refMax) throw new ArgumentException("ReferenceMin must be less than ReferenceMax.");

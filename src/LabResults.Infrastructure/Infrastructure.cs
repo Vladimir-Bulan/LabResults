@@ -27,7 +27,7 @@ namespace LabResults.Infrastructure.Persistence
                 b.HasKey(x => x.Id);
                 b.Property(x => x.Id).ValueGeneratedNever();
                 b.OwnsOne(x => x.Code, o => o.Property(c => c.Value).HasColumnName("Code").IsRequired());
-                b.OwnsOne(x => x.PatientId, o => o.Property(c => c.Value).HasColumnName("PatientId").IsRequired());
+                b.OwnsOne(x => x.PatientId, o => o.Property(c => c.Value).HasColumnName("PatientIdValue").IsRequired());
                 b.OwnsOne(x => x.ValidatedBy, o => o.Property(c => c.Value).HasColumnName("ValidatedById"));
                 b.Property(x => x.AnalysisType).HasConversion<string>();
                 b.Property(x => x.Status).HasConversion<string>();
@@ -46,7 +46,7 @@ namespace LabResults.Infrastructure.Persistence
                         v.Property(x => x.ReferenceMax).HasColumnName("ResultRefMax");
                     });
                 });
-                b.HasIndex("PatientId");
+                
                 b.HasIndex(x => x.Status);
                 b.ToTable("Samples");
             });
@@ -66,7 +66,7 @@ namespace LabResults.Infrastructure.Adapters
         public async Task<Sample?> GetByCodeAsync(string code, CancellationToken ct = default)
             => await _db.Samples.FirstOrDefaultAsync(s => EF.Property<string>(s, "Code") == code.ToUpperInvariant(), ct);
         public async Task<IEnumerable<Sample>> GetByPatientIdAsync(Guid patientId, CancellationToken ct = default)
-            => await _db.Samples.Where(s => EF.Property<Guid>(s, "PatientId") == patientId).ToListAsync(ct);
+            => await _db.Samples.Where(s => EF.Property<Guid>(s, "PatientIdValue") == patientId).ToListAsync(ct);
         public async Task<IEnumerable<Sample>> GetPendingValidationAsync(CancellationToken ct = default)
             => await _db.Samples.Where(s => s.Status == SampleStatus.Completed).ToListAsync(ct);
         public async Task AddAsync(Sample sample, CancellationToken ct = default)
