@@ -1,85 +1,114 @@
 ﻿# LabResults
 
-![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet) ![Tests](https://img.shields.io/badge/tests-11%20passing-brightgreen) ![Architecture](https://img.shields.io/badge/architecture-hexagonal-blue) ![CI](https://github.com/Vladimir-Bulan/LabResults/actions/workflows/ci.yml/badge.svg) ![License](https://img.shields.io/badge/license-MIT-green)
+![CI](https://github.com/Vladimir-Bulan/LabResults/actions/workflows/ci.yml/badge.svg) ![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet) ![Tests](https://img.shields.io/badge/tests-16%20passing-brightgreen) ![Architecture](https://img.shields.io/badge/arquitectura-hexagonal-blue)
 
-> Medical Laboratory Results System built with pure Hexagonal Architecture (Ports & Adapters), DDD, CQRS, gRPC and .NET 8
+> Sistema de gestión de resultados de laboratorio clínico, construido con Arquitectura Hexagonal pura (Ports & Adapters), DDD, CQRS, gRPC y .NET 8.
 
-## Architecture
+---
+
+## ¿Qué hace este sistema?
+
+LabResults gestiona el ciclo de vida completo de una muestra de laboratorio clínico:
+
+1. El **técnico de laboratorio** ingresa una muestra (sangre, orina, etc.)
+2. Se procesa y se carga el resultado con valores numéricos y rangos de referencia
+3. Un **médico** valida el resultado (o lo rechaza)
+4. El sistema notifica al **paciente** por email que su resultado está disponible
+5. Se puede generar un **PDF** del informe
+
+---
+
+## Arquitectura Hexagonal (Ports & Adapters)
+
+La idea central es que el **dominio del negocio no depende de nada externo** — ni de la base de datos, ni del framework web, ni de ningún servicio. Todo lo externo se conecta a través de interfaces llamadas Puertos (Ports).
 
 ```
-[Driving Adapters]        [Domain Core]              [Driven Adapters]
+[Adaptadores Entrantes]      [Núcleo del Sistema]        [Adaptadores Salientes]
 
 REST API ─────────────┐
-                      │  ┌──────────────────────┐  ┌─ PostgreSQL  (ISampleRepository)
-gRPC Service ─────────┼─▶│  Application Layer   │─▶│─ Redis       (ICachePort)
-                      │  │  Domain Layer        │  │─ Email       (INotificationPort)
-                      ┘  └──────────────────────┘  └─ PDF         (IPdfPort)
+                      │  ┌────────────────────┐  ┌─ PostgreSQL  (ISampleRepository)
+gRPC ─────────────────┼─▶│  Application       │─▶│─ Redis       (ICachePort)
+                      │  │  Domain            │  │─ Email       (INotificationPort)
+                      ┘  └────────────────────┘  └─ PDF         (IPdfPort)
 ```
 
-The **Domain layer has zero NuGet dependencies**. All Ports (interfaces) are defined inside the Domain, and Adapters implement them in the Infrastructure layer — true Dependency Inversion.
+**¿Por qué esto importa?**
+- Podés cambiar PostgreSQL por MongoDB sin tocar una línea de lógica de negocio
+- Podés cambiar el email por SMS sin tocar los handlers
+- El dominio se puede testear sin levantar base de datos ni servicios externos
 
-## Tech Stack
+---
 
-| Layer | Technology |
-|-------|-----------|
-| Runtime | .NET 8 |
-| REST API | ASP.NET Core Minimal APIs + Swagger |
-| gRPC | Grpc.AspNetCore |
-| CQRS | MediatR 12 + ValidationBehavior pipeline |
-| Validation | FluentValidation 12 |
-| Database | PostgreSQL 16 + EF Core 8 + Npgsql |
-| Cache | Redis 7 + StackExchange.Redis |
-| Tests | xUnit + FluentAssertions + NSubstitute |
-| Containers | Docker Compose |
+## Estructura de proyectos
 
-## Projects
+| Proyecto | Tipo | Qué contiene |
+|----------|------|-------------|
+| **LabResults.Domain** | Biblioteca | Las reglas de negocio puras: Sample, ValueObjects, Eventos de Dominio, interfaces de Puertos |
+| **LabResults.Application** | Biblioteca | Casos de uso: Comandos, Queries, Handlers de MediatR, Validaciones |
+| **LabResults.Infrastructure** | Biblioteca | Implementaciones concretas: EF Core + PostgreSQL, Redis, Email (stub), PDF (stub) |
+| **LabResults.API** | Web API | Adaptador REST: endpoints con Minimal APIs + Swagger |
+| **LabResults.GrpcService** | gRPC | Adaptador gRPC para técnicos de laboratorio |
+| **LabResults.Tests** | xUnit | 16 tests unitarios: Domain + Application handlers |
 
-| Project | Type | Responsibility |
-|---------|------|--------------|
-| **LabResults.Domain** | Class Library | Aggregates, Value Objects, Domain Events, Ports |
-| **LabResults.Application** | Class Library | CQRS Commands/Queries, MediatR Handlers, Validators |
-| **LabResults.Infrastructure** | Class Library | EF Core, Redis, Email, PDF adapters |
-| **LabResults.API** | Web API | REST driving adapter — Minimal APIs + Swagger |
-| **LabResults.GrpcService** | gRPC | gRPC driving adapter for lab technicians |
-| **LabResults.Tests** | xUnit | Domain unit tests (11 passing) |
+---
 
-## Domain — Sample Lifecycle
+## Ciclo de vida de una muestra
 
 ```
-Received ──[AddResult]──▶ Completed ──[Validate]──▶ Validated ──[Notify]──▶ Notified
-    └─────────────────────────────────────────────────────[Reject]──▶ Rejected
+Recibida ──[CargarResultado]──▶ Completada ──[Validar]──▶ Validada ──[Notificar]──▶ Notificada
+   └──────────────────────────────────────────────────[Rechazar]──▶ Rechazada
 ```
 
-### Domain Events
-| Event | Raised When |
-|-------|------------|
-| SampleReceivedEvent | Sample.Create() |
-| ResultCompletedEvent | Sample.AddResult() |
-| ResultValidatedEvent | Sample.Validate() |
-| PatientNotifiedEvent | Sample.MarkNotified() |
+Cada transición dispara un **Evento de Dominio**:
 
-## API Endpoints
+| Evento | Cuándo se dispara |
+|--------|------------------|
+| SampleReceivedEvent | Al crear la muestra |
+| ResultCompletedEvent | Al cargar el resultado |
+| ResultValidatedEvent | Al validar el médico |
+| PatientNotifiedEvent | Al notificar al paciente |
 
-| Method | Route | Description | Actor |
-|--------|-------|-------------|-------|
-| POST | /api/samples | Submit new sample | Lab Technician |
-| POST | /api/samples/{id}/result | Add analysis result | Lab Technician |
-| POST | /api/samples/{id}/validate | Doctor validates result | Doctor |
-| POST | /api/samples/{id}/reject | Reject sample | Supervisor |
-| POST | /api/samples/{id}/notify | Notify patient | System |
-| GET | /api/samples/{id} | Get sample by ID | Any |
-| GET | /api/samples/code/{code} | Get by LAB-YYYY-XXXXXX | Any |
-| GET | /api/patients/{id}/samples | Get patient history | Patient/Doctor |
-| GET | /api/samples/pending-validation | Doctor dashboard | Doctor |
-| GET | /api/samples/{id}/pdf | Download result PDF | Patient/Doctor |
+---
 
-## Getting Started
+## Patrones aplicados
 
-### Prerequisites
+| Patrón | Dónde | Para qué |
+|--------|-------|---------|
+| Arquitectura Hexagonal | Toda la solución | Desacoplar negocio de infraestructura |
+| DDD (Domain-Driven Design) | Domain layer | Modelar el negocio con lenguaje ubicuo |
+| CQRS | Application layer | Separar escrituras (Commands) de lecturas (Queries) |
+| Value Objects | PatientId, SampleCode, ResultValue, Email | Encapsular validaciones e invariantes |
+| Aggregate Root | Sample | Garantizar consistencia dentro del agregado |
+| Repository Pattern | ISampleRepository | Abstraer la persistencia del dominio |
+| Pipeline Behavior | ValidationBehavior | Validación automática antes de cada comando |
+| Factory Method | Sample.Create(), SampleCode.Generate() | Forzar invariantes en la construcción |
+
+---
+
+## Endpoints REST
+
+| Método | Ruta | Descripción | Actor |
+|--------|------|-------------|-------|
+| POST | \/api/samples\ | Crear nueva muestra | Técnico |
+| POST | \/api/samples/{id}/result\ | Cargar resultado de análisis | Técnico |
+| POST | \/api/samples/{id}/validate\ | Médico valida el resultado | Médico |
+| POST | \/api/samples/{id}/reject\ | Rechazar muestra | Supervisor |
+| POST | \/api/samples/{id}/notify\ | Notificar al paciente | Sistema |
+| GET | \/api/samples/{id}\ | Obtener muestra por ID | Cualquiera |
+| GET | \/api/samples/code/{code}\ | Buscar por código LAB-YYYY-XXXXXX | Cualquiera |
+| GET | \/api/patients/{id}/samples\ | Historial de un paciente | Paciente/Médico |
+| GET | \/api/samples/pending-validation\ | Lista para el médico | Médico |
+| GET | \/api/samples/{id}/pdf\ | Descargar informe PDF | Paciente/Médico |
+
+---
+
+## Cómo ejecutarlo
+
+### Requisitos
 - .NET 8 SDK
 - Docker Desktop
 
-### Run with Docker
+### Con Docker (recomendado)
 ```bash
 git clone https://github.com/Vladimir-Bulan/LabResults.git
 cd LabResults
@@ -89,32 +118,37 @@ docker compose up -d
 # Swagger: http://localhost:5010/swagger
 ```
 
-### Run locally
+### Solo la base de datos + correr local
 ```bash
-# Start dependencies
 docker compose up postgres redis -d
-
-# Apply migrations
 dotnet ef database update --project src/LabResults.Infrastructure --startup-project src/LabResults.API
-
-# Run API
 dotnet run --project src/LabResults.API
 ```
 
-### Run Tests
+### Correr los tests
 ```bash
 dotnet test tests/LabResults.Tests
-# Passed: 11, Failed: 0
+# Resultado: 16 tests pasando
 ```
 
-## Key Design Decisions
+---
 
-- **Domain has zero NuGet dependencies** — pure C# business logic, fully testable in isolation
-- **Ports defined in Domain** — true Dependency Inversion, inner layers never depend on outer
-- **Adapters are swappable** — replace PostgreSQL with MongoDB, SendGrid with Twilio, independently
-- **MediatR ValidationBehavior** — FluentValidation runs as cross-cutting pipeline concern
-- **Value Objects enforce invariants** — SampleCode (LAB-YYYY-XXXXXX), ResultValue (Normal/Low/High)
-- **Two driving adapters** — REST API for patients/doctors, gRPC for lab technician systems
+## Stack tecnológico
 
-## License
+| Capa | Tecnología |
+|------|-----------|
+| Runtime | .NET 8 |
+| API REST | ASP.NET Core Minimal APIs + Swashbuckle |
+| gRPC | Grpc.AspNetCore |
+| CQRS | MediatR 12 + ValidationBehavior |
+| Validación | FluentValidation 12 |
+| Base de datos | PostgreSQL 16 + Entity Framework Core 8 + Npgsql |
+| Caché | Redis 7 + StackExchange.Redis |
+| Tests | xUnit + FluentAssertions + NSubstitute |
+| Contenedores | Docker Compose |
+| CI | GitHub Actions |
+
+---
+
+## Licencia
 MIT
