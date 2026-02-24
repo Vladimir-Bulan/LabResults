@@ -1,6 +1,6 @@
 ﻿# LabResults
 
-![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet) ![Tests](https://img.shields.io/badge/tests-11%20passing-brightgreen) ![Architecture](https://img.shields.io/badge/architecture-hexagonal-blue) ![License](https://img.shields.io/badge/license-MIT-green)
+![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet) ![Tests](https://img.shields.io/badge/tests-11%20passing-brightgreen) ![Architecture](https://img.shields.io/badge/architecture-hexagonal-blue) ![CI](https://github.com/Vladimir-Bulan/LabResults/actions/workflows/ci.yml/badge.svg) ![License](https://img.shields.io/badge/license-MIT-green)
 
 > Medical Laboratory Results System built with pure Hexagonal Architecture (Ports & Adapters), DDD, CQRS, gRPC and .NET 8
 
