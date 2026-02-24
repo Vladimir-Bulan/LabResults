@@ -148,7 +148,3 @@ dotnet test tests/LabResults.Tests
 | Contenedores | Docker Compose |
 | CI | GitHub Actions |
 
----
-
-## Licencia
-MIT
