@@ -64,7 +64,7 @@ namespace LabResults.Infrastructure.Adapters
         public async Task<Sample?> GetByIdAsync(Guid id, CancellationToken ct = default)
             => await _db.Samples.FirstOrDefaultAsync(s => s.Id == id, ct);
         public async Task<Sample?> GetByCodeAsync(string code, CancellationToken ct = default)
-            => await _db.Samples.FirstOrDefaultAsync(s => EF.Property<string>(s, "Code") == code.ToUpperInvariant(), ct);
+            => await _db.Samples.FromSqlRaw("SELECT * FROM \"Samples\" WHERE \"Code\" = {0}", code.ToUpperInvariant()).FirstOrDefaultAsync(ct);
         public async Task<IEnumerable<Sample>> GetByPatientIdAsync(Guid patientId, CancellationToken ct = default)
             => await _db.Samples.Where(s => EF.Property<Guid>(s, "PatientIdValue") == patientId).ToListAsync(ct);
         public async Task<IEnumerable<Sample>> GetPendingValidationAsync(CancellationToken ct = default)
@@ -162,3 +162,15 @@ namespace LabResults.Infrastructure
         }
     }
 }
+namespace LabResults.Infrastructure.Persistence {
+    using Microsoft.EntityFrameworkCore;
+    using Microsoft.EntityFrameworkCore.Design;
+    public class LabResultsDbContextFactory : IDesignTimeDbContextFactory<LabResultsDbContext> {
+        public LabResultsDbContext CreateDbContext(string[] args) {
+            var opts = new DbContextOptionsBuilder<LabResultsDbContext>();
+            opts.UseNpgsql("Host=localhost;Port=5435;Database=labresults;Username=walletflow;Password=walletflow123");
+            return new LabResultsDbContext(opts.Options);
+        }
+    }
+}
+
